@@ -18,13 +18,12 @@ use tracing_subscriber::{fmt::format::FmtSpan, prelude::*, EnvFilter};
 /// use chatti::logging;
 ///
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-/// let _guard = logging::setup_logging()?;
+/// let _guard = logging::setup()?;
 /// // The guard should be held until the end of the program
 /// # Ok(())
 /// # }
 /// ```
-pub fn setup_logging(
-) -> Result<tracing_appender::non_blocking::WorkerGuard, Box<dyn std::error::Error>> {
+pub fn setup() -> Result<tracing_appender::non_blocking::WorkerGuard, Box<dyn std::error::Error>> {
     let config_dir = dirs::home_dir()
         .ok_or("home directory not found")?
         .join(".config")

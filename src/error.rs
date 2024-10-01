@@ -6,7 +6,7 @@ use thiserror::Error;
 pub enum Application {
     /// Configuration-related errors.
     #[error("Configuration error: {0}")]
-    Config(#[from] crate::config::ConfigError),
+    Config(#[from] crate::config::FSError),
 
     /// UI-related errors.
     #[error("UI error: {0}")]
