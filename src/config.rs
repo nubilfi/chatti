@@ -28,6 +28,17 @@ impl Config {
     ///
     /// Returns a `Result` containing either the loaded `Config` or a `FSError`.
     ///
+    /// # Errors
+    ///
+    /// This function will return an error in the following situations:
+    /// - `FSError::HomeDirNotFound`: If the home directory cannot be found.
+    /// - `FSError::IoError`: If there's an I/O error while creating directories,
+    ///   reading from, or writing to the configuration file.
+    /// - `FSError::TomlParseError`: If the configuration file exists but contains
+    ///   invalid TOML syntax.
+    /// - `FSError::TomlSerializeError`: If there's an error serializing the default
+    ///   configuration to TOML format when creating a new configuration file.
+    ///
     /// # Examples
     ///
     /// ```rust

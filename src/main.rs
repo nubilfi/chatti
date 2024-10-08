@@ -1,16 +1,14 @@
-mod config;
-mod error;
-mod logging;
-mod ui;
+use chatti::{config, error, logging, ui};
 
 use config::Config;
 use error::{AppResult, Application};
 use futures_util::StreamExt;
 use serde_json::json;
-use std::time::Duration;
 use tokio::sync::mpsc;
+use tokio::time::{sleep, Duration};
 use tracing::{error, instrument};
-use ui::{Action, ChatUI};
+use ui::Action;
+use ui::Interface;
 
 /// The main entry point of the Chatti application.
 ///
@@ -22,7 +20,7 @@ async fn main() -> AppResult<()> {
     let _guard = logging::setup()?;
 
     let config = Config::load()?;
-    let mut chat_ui = ChatUI::new()?;
+    let mut chat_ui = Interface::new()?;
     let client = reqwest::Client::new();
 
     while let Some(message) = chat_ui.run()? {
@@ -38,6 +36,10 @@ async fn main() -> AppResult<()> {
 
         chat_ui.start_new_response();
         process_response(&mut chat_ui, &mut rx).await?;
+
+        if chat_ui.should_quit() {
+            break;
+        }
     }
 
     Ok(())
@@ -62,7 +64,7 @@ async fn process_message(
     message: &str,
     tx: mpsc::Sender<Result<String, Application>>,
 ) -> AppResult<()> {
-    let response = client
+    let response = match client
         .post(&config.api_endpoint)
         .json(&json!({
             "model": config.model,
@@ -71,7 +73,35 @@ async fn process_message(
             "temperature": config.temperature,
         }))
         .send()
-        .await?;
+        .await
+    {
+        Ok(resp) => resp,
+        Err(e) => {
+            tx.send(Err(Application::Network(e)))
+                .await
+                .map_err(|e| Application::Unexpected(e.to_string()))?;
+            return Ok(());
+        }
+    };
+
+    if !response.status().is_success() {
+        let error_body = response.text().await?;
+        let error_json: serde_json::Value =
+            serde_json::from_str(&error_body).unwrap_or_else(|_| json!({"error": error_body}));
+
+        if let Some(error_message) = error_json.get("error").and_then(|e| e.as_str()) {
+            tx.send(Err(Application::ApiError(error_message.to_string())))
+                .await
+                .map_err(|e| Application::Unexpected(e.to_string()))?;
+        } else {
+            tx.send(Err(Application::Unexpected(
+                "Unknown API error".to_string(),
+            )))
+            .await
+            .map_err(|e| Application::Unexpected(e.to_string()))?;
+        }
+        return Ok(());
+    }
 
     if !config.stream {
         // Handle regular (non-streaming) response
@@ -124,10 +154,11 @@ async fn process_message(
 ///
 /// Returns a `Result` indicating success or an `Application` error.
 async fn process_response(
-    chat_ui: &mut ChatUI,
+    chat_ui: &mut Interface,
     rx: &mut mpsc::Receiver<Result<String, Application>>,
 ) -> AppResult<()> {
     let mut full_response = String::new();
+    let mut error_occurred = false;
 
     loop {
         tokio::select! {
@@ -138,17 +169,18 @@ async fn process_response(
                         chat_ui.update_response(&content);
                         if let Some(action) = chat_ui.update()? {
                             if action == Action::CancelRequest {
-                                chat_ui.add_response("request cancelled".to_string());
+                                chat_ui.add_response("Request cancelled".to_string());
                                 return Ok(());
                             }
                         }
                     }
                     Some(Err(err)) => {
-                        error!(?err, "error occurred while receiving response");
+                        error!(?err, "Error occurred while receiving response");
                         chat_ui.add_response(format!(
-                            "error: {}, For more details, please check the log file at: {}",
+                            "Error: {}, For more details, please check the log file at: {}",
                             err.display_message(), logging::get_log_file_path().display()
                         ));
+                        error_occurred = true;
                         break;
                     }
                     None => {
@@ -159,15 +191,20 @@ async fn process_response(
                     }
                 }
             }
-            () = tokio::time::sleep(Duration::from_millis(100)) => {
+            () = sleep(Duration::from_millis(100)) => {
                 if let Some(action) = chat_ui.update()? {
                     if action == Action::CancelRequest {
-                        chat_ui.add_response("request cancelled".to_string());
+                        chat_ui.add_response("Request cancelled".to_string());
                         return Ok(());
                     }
                 }
             }
         }
+    }
+
+    if error_occurred {
+        // Add a delay to prevent rapid spinning
+        sleep(Duration::from_millis(300)).await;
     }
 
     Ok(())

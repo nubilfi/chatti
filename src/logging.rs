@@ -12,6 +12,15 @@ use tracing_subscriber::{fmt::format::FmtSpan, prelude::*, EnvFilter};
 /// Returns a `Result` containing the `WorkerGuard` for the non-blocking writer,
 /// or a boxed error if setup fails.
 ///
+/// # Errors
+///
+/// This function can return an error in the following situations:
+/// - If the home directory cannot be found.
+/// - If there's an I/O error while creating directories for config or logs.
+/// - If there's an error initializing the file appender or tracing subscriber.
+///
+/// The specific error types are wrapped in a `Box<dyn std::error::Error>`.
+///
 /// # Examples
 ///
 /// ```
@@ -62,11 +71,11 @@ pub fn setup() -> Result<tracing_appender::non_blocking::WorkerGuard, Box<dyn st
 /// let log_path = logging::get_log_file_path();
 /// println!("Log file is located at: {:?}", log_path);
 /// ```
+#[must_use]
 pub fn get_log_file_path() -> PathBuf {
     dirs::home_dir()
         .unwrap_or_default()
         .join(".config")
         .join("chatti")
         .join("logs")
-        .join("errors.log")
 }

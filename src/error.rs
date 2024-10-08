@@ -20,6 +20,9 @@ pub enum Application {
     #[error("JSON parsing error: {0}")]
     JsonParse(#[from] serde_json::Error),
 
+    #[error("API error: {0}")]
+    ApiError(String),
+
     /// Unexpected errors.
     #[error("Unexpected error: {0}")]
     Unexpected(String),
@@ -46,14 +49,16 @@ impl Application {
     /// use chatti::error::Application;
     ///
     /// let error = Application::Unexpected("Something went wrong".to_string());
-    /// assert_eq!(error.user_friendly_message(), "An unexpected error occurred");
+    /// assert_eq!(error.display_message(), "An unexpected error occurred");
     /// ```
+    #[must_use]
     pub fn display_message(&self) -> &str {
         match self {
             Application::Config(_) => "There was an issue with the application configuration",
             Application::Ui(_) => "An error occurred in the user interface",
             Application::Network(_) => "There was a problem connecting to the server",
             Application::JsonParse(_) => "There was an issue processing the server response",
+            Application::ApiError(msg) => msg,
             Application::Unexpected(_) => "An unexpected error occurred",
         }
     }
