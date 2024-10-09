@@ -12,6 +12,8 @@ readme = "README.md"
 exclude = [
   ".github/*",
   ".gitignore",
+  "benches/*",
+  "tests/*",
 ]
 
 [dependencies]
@@ -39,6 +41,13 @@ opt-level = "z"
 codegen-units = 1
 lto = true
 panic = "abort"
+
+[dev-dependencies]
+criterion = { version = "0.5.1", features = ["html_reports"] }
+
+[[bench]]
+name = "chatti_benchmarks"
+harness = false
 
 [package.metadata.release]
 sign-commit = true
