@@ -1,5 +1,10 @@
 # Chatti
 
+[![version](https://img.shields.io/crates/v/chatti?color=blue&logo=rust&style=flat-square)](https://crates.io/crates/chatti)
+[![Build Status](https://github.com/nubilfi/chatti/actions/workflows/rust.yml/badge.svg)](https://github.com/nubilfi/chatti/actions?branch=main)
+[![Documentation](https://docs.rs/chatti/badge.svg)](https://docs.rs/chatti/latest/chatti/index.html)
+[![codecov](https://codecov.io/github/nubilfi/chatti/graph/badge.svg?token=0RVFXA3WON)](https://codecov.io/github/nubilfi/chatti)
+
 Chatti is a terminal-based chat application that interfaces with Ollama, providing a unique way to interact with Ollama's language models directly from your command line.
 
 ## Features
